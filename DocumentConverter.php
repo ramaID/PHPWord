@@ -157,22 +157,39 @@ class DocumentConverter
     }
 
     /**
-     * Convert using Pandoc (if available)
+     * Convert using Pandoc via DOCX intermediate (since Pandoc doesn't support DOC output)
      */
     private function convertWithPandoc(string $inputPath, string $outputPath): bool
     {
         try {
-            $command = sprintf(
-                'pandoc -f docx -t doc %s -o %s',
+            Log::info('Pandoc does not support DOC output, using LibreOffice fallback');
+            
+            // Pandoc can't output DOC format, so we use it to clean/reprocess the DOCX
+            // then convert with LibreOffice
+            $tempDocxPath = $inputPath . '.pandoc-processed.docx';
+            
+            // Use Pandoc to reprocess the DOCX (this can fix some formatting issues)
+            $pandocCommand = sprintf(
+                'pandoc -f docx -t docx %s -o %s',
                 escapeshellarg($inputPath),
-                escapeshellarg($outputPath)
+                escapeshellarg($tempDocxPath)
             );
 
-            $result = Process::run($command);
+            $pandocResult = Process::run($pandocCommand);
             
-            if ($result->successful()) {
-                Log::info('Pandoc conversion successful');
-                return file_exists($outputPath);
+            if ($pandocResult->successful() && file_exists($tempDocxPath)) {
+                // Now convert the Pandoc-processed DOCX to DOC using LibreOffice
+                $success = $this->convertWithSoffice($tempDocxPath, $outputPath);
+                
+                // Clean up temporary file
+                if (file_exists($tempDocxPath)) {
+                    unlink($tempDocxPath);
+                }
+                
+                if ($success) {
+                    Log::info('Pandoc + LibreOffice conversion successful');
+                    return true;
+                }
             }
 
             return false;
@@ -187,6 +204,7 @@ class DocumentConverter
      */
     private function convertWithFallback(string $inputPath, string $outputPath): bool
     {
+        // Prioritize methods: soffice (direct), rtf (better compatibility), pandoc (preprocessing + soffice)
         $methods = ['soffice', 'rtf', 'pandoc'];
         
         foreach ($methods as $method) {
@@ -320,16 +338,18 @@ class DocumentConverter
     {
         $tools = [];
         
-        // Check LibreOffice
+        // Check LibreOffice (required for all DOC conversions)
         $sofficeResult = Process::run('soffice --version');
         $tools['soffice'] = $sofficeResult->successful();
         
-        // Check Pandoc
+        // Check Pandoc (for DOCX preprocessing, still requires LibreOffice for final DOC conversion)
         $pandocResult = Process::run('pandoc --version');
         $tools['pandoc'] = $pandocResult->successful();
+        $tools['pandoc_note'] = 'Pandoc can preprocess DOCX but requires LibreOffice for DOC conversion';
         
-        // PHPWord RTF is always available
+        // PHPWord RTF is always available (but still requires LibreOffice for final DOC conversion)
         $tools['phpword_rtf'] = true;
+        $tools['rtf_note'] = 'RTF method uses PHPWord + LibreOffice';
         
         Log::info('Available conversion tools', $tools);
         
@@ -343,12 +363,20 @@ class DocumentConverter
     {
         $tools = $this->checkAvailableTools();
         
-        if ($tools['soffice']) {
-            return 'soffice';
-        } elseif ($tools['pandoc']) {
-            return 'pandoc';
-        } else {
-            return 'rtf';
+        // LibreOffice is required for all DOC conversions
+        if (!$tools['soffice']) {
+            Log::warning('LibreOffice not available - DOC conversion will fail');
+            return 'none'; // Indicate that DOC conversion is not possible
         }
+        
+        // If LibreOffice is available, choose the best method
+        if ($tools['pandoc']) {
+            return 'pandoc'; // Pandoc preprocessing + LibreOffice often gives best results
+        } else {
+            return 'soffice'; // Direct LibreOffice conversion
+        }
+        
+        // RTF method is always available as fallback since PHPWord RTF is built-in
+        // but it's typically used when other methods fail rather than as first choice
     }
 }

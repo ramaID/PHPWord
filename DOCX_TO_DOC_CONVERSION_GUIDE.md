@@ -6,10 +6,12 @@ This guide explains how to use the new DOCX to DOC conversion functionality to a
 
 The new conversion system provides multiple methods to convert DOCX files to DOC format:
 
-1. **LibreOffice (soffice)** - Uses optimized parameters for better formatting preservation
-2. **RTF Intermediate** - Converts DOCX → RTF → DOC for better compatibility
-3. **Pandoc** - Alternative conversion tool (if available)
+1. **LibreOffice (soffice)** - Direct conversion with optimized parameters
+2. **RTF Intermediate** - Converts DOCX → RTF → DOC for better compatibility  
+3. **Pandoc + LibreOffice** - Preprocesses DOCX with Pandoc, then converts to DOC with LibreOffice
 4. **Auto Fallback** - Tries multiple methods automatically
+
+**Important**: LibreOffice is required for all DOC conversions since DOC is a legacy Microsoft format that only LibreOffice can reliably output.
 
 ## Setup Instructions
 
@@ -176,9 +178,10 @@ $converter->convertDocxToDoc($input, $output, ['method' => 'rtf']);
 
 ### 3. Pandoc Method
 
-**Best for**: Documents with complex structures
-**Pros**: Very good at preserving document structure
-**Cons**: Requires additional installation
+**Best for**: Documents with complex structures or formatting issues
+**Pros**: Preprocesses DOCX to fix formatting issues before LibreOffice conversion
+**Cons**: Requires additional installation, still needs LibreOffice for final DOC conversion
+**Note**: Pandoc cannot directly output DOC format - it preprocesses DOCX then uses LibreOffice
 
 ```php
 $converter->convertDocxToDoc($input, $output, ['method' => 'pandoc']);
@@ -270,6 +273,14 @@ Log::info('Available tools', $tools);
 // Use createDocCompatibleVersion as last resort
 $success = $converter->createDocCompatibleVersion($input, $output);
 ```
+
+#### 5. Pandoc DOC Output Error
+
+**Error**: `Unknown output format doc` when using Pandoc
+
+**Explanation**: This is expected! Pandoc cannot directly output DOC format. Our implementation uses Pandoc to preprocess the DOCX file and then uses LibreOffice for the final DOC conversion.
+
+**Solution**: This is handled automatically by the `pandoc` method - no action needed.
 
 ### Debug Mode
 

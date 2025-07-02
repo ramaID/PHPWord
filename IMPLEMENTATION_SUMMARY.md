@@ -9,7 +9,7 @@ I've created a comprehensive solution to address your LibreOffice compatibility 
 - **Features**:
   - LibreOffice (soffice) conversion with optimized parameters
   - RTF intermediate conversion for better compatibility  
-  - Pandoc support as alternative method
+  - Pandoc preprocessing + LibreOffice conversion (Pandoc cannot directly output DOC)
   - Automatic fallback between methods
   - DOCX cleaning before conversion to fix formatting issues
   - Comprehensive error handling and logging
