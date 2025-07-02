@@ -27,6 +27,7 @@ use PhpOffice\PhpWord\Writer\ODText;
 use PhpOffice\PhpWord\Writer\PDF;
 use PhpOffice\PhpWord\Writer\RTF;
 use PhpOffice\PhpWord\Writer\Word2007;
+use PhpOffice\PhpWord\Writer\Word2003;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -61,6 +62,7 @@ class IOFactoryTest extends TestCase
             ['ODText', ODText::class],
             ['RTF', RTF::class],
             ['Word2007', Word2007::class],
+            ['Word2003', Word2003::class],
             ['HTML', HTML::class],
             ['PDF', PDF::class],
         ];
